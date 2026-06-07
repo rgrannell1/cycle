@@ -109,7 +109,12 @@ function walkObjectChildren(
   if (properties === undefined) {
     return;
   }
-  for (const child of Object.values(properties)) {
+  for (const [key, child] of Object.entries(properties)) {
+    // Property names are path segments; a dotted name would alias a nested path
+    // (e.g. "a.b" collides with a -> b) and break the bijection.
+    if (key.includes(".")) {
+      throw new Error(`cycle: property name ${JSON.stringify(key)} must not contain "."`);
+    }
     walkAdmissible(root, child, visited);
   }
 }

@@ -41,7 +41,7 @@ function checkParams(ctx: Deno.lint.RuleContext, params: Deno.lint.Pattern[]): v
 }
 
 export default {
-  name: "cmstr",
+  name: "cycle",
   rules: {
     "no-single-letter-vars": {
       create(ctx: Deno.lint.RuleContext) {

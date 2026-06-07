@@ -134,6 +134,19 @@ Deno.test("createCodec rejects oneOf combinators", () => {
   );
 });
 
+Deno.test("createCodec rejects dotted property names", () => {
+  assertThrows(
+    () =>
+      createCodec({
+        type: "object",
+        additionalProperties: false,
+        properties: { "a.b": { type: "string" } },
+      }),
+    Error,
+    'must not contain "."',
+  );
+});
+
 Deno.test("encode rejects state that violates the schema", () => {
   const codec = createCodec(SCHEMA);
   assertThrows(
