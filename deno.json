@@ -1,0 +1,12 @@
+{
+  "name": "cycle",
+  "version": "0.1.0",
+  "exports": "./src/mod.ts",
+  "lint": {
+    "plugins": ["./lint-plugins/no-single-letter-vars.ts"]
+  },
+  "imports": {
+    "ajv": "npm:ajv@^8.17.1",
+    "@std/assert": "jsr:@std/assert@^1"
+  }
+}
