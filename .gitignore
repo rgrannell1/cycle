@@ -1,3 +1,6 @@
 .claude/settings.local.json
 .vscode/
 work.md
+
+node_modules/
+dist/

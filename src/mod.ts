@@ -7,6 +7,7 @@ import { toParams } from "./encode.ts";
 import { fromParams } from "./decode.ts";
 
 export type { Codec, JsonSchema, JsonValue, StateObject } from "./types.ts";
+export { type CompressionOptions, withCompression } from "./compress.ts";
 
 // Compile a validator and check the schema once, returning the encode/decode pair.
 export function createCodec(schema: JsonSchema): Codec {

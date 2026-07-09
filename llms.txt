@@ -1,0 +1,47 @@
+# cycle
+
+> Cycle is a Deno/TypeScript library that bidirectionally maps JSON state objects to URL query parameters using JSON Schema, enabling lossless round-tripping between structured state and URL-encoded representations.
+
+## Stack
+- **Deno/TypeScript** — runtime and language; targets JSON Schema draft 2023-02
+- **AJV** (^8.17.1) — JSON Schema validator; compiled once per codec instance
+- **@std/assert** — Deno standard library for assertions in tests
+- **esbuild** — build system (configured in `bs/`)
+- **Core library** — bijection between URL query parameters and JSON state objects, with lossless round-tripping
+- **URL parameter serialization** — dotted paths for nested objects, numeric indices for arrays, type-driven coercion via schema
+- **Admissible schemas** — rejects oneOf/anyOf/unions; all types must be concrete scalars or arrays/objects of scalars
+
+## Purpose
+Cycle is a Deno/TypeScript library that bidirectionally maps JSON state objects to URL query parameters using JSON Schema, enabling lossless round-tripping between structured state and URL-encoded representations. It's used by frontend applications that need to serialize/deserialize complex state into URLs, solving the problem of maintaining type safety and canonical form when persisting application state in URLs. The library exposes a `createCodec` factory that returns `encode` and `decode` functions, compiled once with Ajv for performance.
+
+## Structure
+- `.claude/` - Project-specific Claude configuration
+- `.vscode/` - VS Code workspace settings
+- `bs/` - Build system scripts (build.zsh, check.zsh, dev:watch.zsh, lint.zsh, run.zsh, test.zsh)
+- `deno.json` - Deno project configuration
+- `lint-plugins/no-single-letter-vars.ts` - Custom linter plugin enforcing descriptive variable names
+- `src/decode.ts` - Decoding logic for cycle codec
+- `src/encode.ts` - Encoding logic for cycle codec
+- `src/mod.ts` - Main module export
+- `src/schema.ts` - Schema definitions / navigation for cycle format
+- `src/types.ts` - TypeScript type definitions
+- `test/codec_test.ts` - Tests for encoder/decoder functionality
+- `test/ux_test/recipes_test.ts` - User experience tests for encoding recipes
+- `test/ux_test/shape_fill_test.ts` - User experience tests for shape filling
+- `README.md` - Empty (placeholder)
+- `work.md` - Project working notes covering requirements, design, and UAT snags
+
+## Data flows
+- **Schema-driven codec pattern**: Data enters via a JSON Schema document (provided at initialization) that defines the structure, types, and validation rules for state objects; the schema is walked once to enforce admissibility constraints (no unions/combinators, single concrete types) and reject dotted property names that would create path collisions.
+- **State ↔ URL parameter bijection**: User state objects (nested JSON with typed fields) flow through `encode(state)` → `URLSearchParams` serialization using dotted-path flattening (e.g., `{a:{b:1}}` becomes `a.b=1`), and reverse via `decode(params)` which coerces parameter strings to their declared schema types and reconstructs the object.
+- **Type-driven coercion**: During decode, each leaf parameter is coerced from string to its declared type (string, number, integer, boolean, null) via JSON.parse (except strings which pass through), then the entire decoded object is validated against the schema using a pre-compiled Ajv validator to enforce required/optional/enum/pattern constraints.
+- **Canonical round-trip guarantee**: Encoding follows schema property order (depth-first) to produce deterministic, canonical URL parameters; round-tripping is lossless (`decode(encode(state)) === state`), and the canonical form property (`encode(decode(params)) === params`) holds only for canonical input.
+- **Emptiness encoding via bare markers**: Empty/null values are represented as bare `path=` (with no value), disambiguated by the schema type at that path; absent optional properties emit no parameter, while present-but-empty collections (`[]`, `{}`) emit only the bare marker, creating a three-way distinction without reserved sentinels.
+
+## Architecture
+- **Single-purpose codec library**: Cycle converts between JSON state objects and URL parameters based on JSON Schema definitions, providing bidirectional encode/decode operations through a unified `Codec` interface.
+- **Schema-first design with validation**: The schema is walked and validated once at codec creation (`assertAdmissible`) to reject unsupported patterns (combinators like `oneOf`, dotted property names that would create path ambiguity), ensuring the bijection is maintainable.
+- **Three-layer encoding/decoding**: Schema navigation (`schema.ts`) resolves `$ref` pointers and inspects type metadata; encode/decode modules walk both schema and value trees in parallel, handling scalars, objects, arrays, and nested structures through dotted-path leaf serialization.
+- **Strict type coercion on decode**: String parameters are coerced to their declared types (strings pass through, booleans/numbers/integers are JSON-parsed, nulls must be empty markers), then validated against the original schema via AJV to catch semantic errors like out-of-range integers or enum mismatches.
+- **Path construction as core abstraction**: Nested values map to dotted parameter names (e.g., `filter.min`); empty objects/arrays serialize as bare `path=` markers to distinguish absence from emptiness, preserving presence information across serialization.
+- **Minimal schema subset**: Only supports `type`, `properties`, `items`, `$ref`, and `$defs`; rejects type unions, conditional schemas, and non-concrete types to maintain a deterministic, schema-ordered encoding strategy.
